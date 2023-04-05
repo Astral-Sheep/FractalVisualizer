@@ -2,35 +2,35 @@ mod utils;
 
 use std::sync::Arc;
 use vulkano::{
-    swapchain::{ self, SwapchainCreateInfo, SwapchainCreationError, PresentInfo, AcquireError },
+    swapchain::{ self, SwapchainCreateInfo, SwapchainCreationError, PresentInfo, AcquireError, Surface },
     sync::{ self, GpuFuture, FenceSignalFuture, FlushError },
 };
 use vulkano_win::VkSurfaceBuild;
 use winit::{
-    window::WindowBuilder,
+    window::{ Window, WindowBuilder },
     dpi::PhysicalPosition,
     event_loop::{ EventLoop, ControlFlow },
     event::{ Event, WindowEvent, MouseButton, ElementState, MouseScrollDelta }
 };
-use utils::Vector2;
+use utils::Vector2_32;
+use utils::Vector2_64;
 
-const ZOOM_MULTIPLIER: f32 = 1.1;
+const ZOOM_MULTIPLIER_32: f32 = 1.25;
 
-#[allow(unused)]
 fn main()
 {
     let instance = utils::init::create_instance();
 
     let event_loop = EventLoop::new();
     let surface = WindowBuilder::new()
-        .with_title("Mandelbrot set | Vulkano")
+        .with_title("Fractals: Mandelbrot & Julia | Vulkano")
         .build_vk_surface(&event_loop, instance.clone())
         .expect("Failed to create surface.");
 
     let (physical_device, device, mut queues) = utils::init::create_device(&instance, &surface);
     let queue = queues.next().unwrap();
 
-    let (mut swapchain, mut images) = utils::init::create_swapchain(
+    let (mut swapchain, images) = utils::init::create_swapchain(
         physical_device.clone(),
         device.clone(),
         surface.clone()
@@ -43,11 +43,9 @@ fn main()
     let mut viewport = utils::init::get_viewport(&surface);
 
     let mut image_zoom = 1f32;
-    let mut image_center = Vector2::new(
-        (surface.window().inner_size().width as f32) / 2.0,
-        (surface.window().inner_size().height as f32) / 2.0
-    );
-    let mut image_offset = Vector2::new(0.0, 0.0);
+    let mut image_center = Vector2_32::new(0.0, 0.0);
+    set_center(&mut image_center, &surface);
+    let mut image_offset = Vector2_64::new(0.0, 0.0);
 
     let pipeline = utils::rendering::create_pipeline(&device, &render_pass, &viewport);
     let mut command_buffers = utils::rendering::create_command_buffers(
@@ -56,7 +54,7 @@ fn main()
         &pipeline,
         &framebuffers,
         &vertex_buffer,
-        image_center.clone(),
+        image_center,
         image_offset,
         image_zoom
     );
@@ -86,23 +84,25 @@ fn main()
             redraw = true;
         }
         Event::WindowEvent {
-            event: WindowEvent::MouseWheel { device_id , delta, .. },
+            event: WindowEvent::MouseWheel { delta, .. },
             ..
         } => {
-            match delta
-            {
-                MouseScrollDelta::LineDelta(_, vertical) => {
-                    image_zoom *= if vertical < 0.0 { 1.0 / ZOOM_MULTIPLIER } else { ZOOM_MULTIPLIER };
+            zoom_32(
+                &mut image_zoom,
+                match delta {
+                    MouseScrollDelta::LineDelta(_, vertical) => {
+                        vertical
+                    }
+                    MouseScrollDelta::PixelDelta(position) => {
+                        position.y as f32
+                    }
                 }
-                MouseScrollDelta::PixelDelta(position) => {
-                    image_zoom *= if position.y < 0.0 { 1.0 / ZOOM_MULTIPLIER } else { ZOOM_MULTIPLIER };
-                }
-            }
+            );
 
             redraw = true;
         }
         Event::WindowEvent {
-            event: WindowEvent::MouseInput { device_id, state, button, .. },
+            event: WindowEvent::MouseInput { state, button, .. },
             ..
         } => {
             if button == MouseButton::Left || button == MouseButton::Right
@@ -111,14 +111,14 @@ fn main()
             }
         }
         Event::WindowEvent {
-            event: WindowEvent::CursorMoved { device_id, position, .. },
+            event: WindowEvent::CursorMoved { position, .. },
             ..
         } => {
             if mouse_down
             {
-                image_offset += utils::Vector2::new(
-                    ((position.x - last_mouse_position.x) as f32) / image_zoom,
-                    ((position.y - last_mouse_position.y) as f32) / image_zoom
+                image_offset += utils::Vector2_64::new(
+                    (position.x - last_mouse_position.x) / (image_zoom as f64),
+                    (position.y - last_mouse_position.y) / (image_zoom as f64)
                 );
                 redraw = true;
             }
@@ -146,10 +146,7 @@ fn main()
                 {
                     redraw = false;
                     viewport.dimensions = new_dimensions.into();
-                    image_center = utils::Vector2::new(
-                        viewport.dimensions[0] / 2.0,
-                        viewport.dimensions[1] / 2.0
-                    );
+                    set_center(&mut image_center, &surface);
 
                     let new_pipeline = utils::rendering::create_pipeline(&device, &render_pass, &viewport);
                     command_buffers = utils::rendering::create_command_buffers(
@@ -158,7 +155,7 @@ fn main()
                         &new_pipeline,
                         &new_framebuffers,
                         &vertex_buffer,
-                        image_center.clone(),
+                        image_center,
                         image_offset,
                         image_zoom
                     );
@@ -174,7 +171,7 @@ fn main()
                 Err(e) => panic!("Failed to acquire next image {:?}", e),
             };
 
-            if (suboptimal)
+            if suboptimal
             {
                 recreate_swapchain = true;
             }
@@ -227,4 +224,17 @@ fn main()
         }
         _ => ()
     });
+}
+
+fn set_center(center: &mut Vector2_32, surface: &Arc<Surface<Window>>)
+{
+    *center = Vector2_32::new(
+        surface.window().inner_size().width as f32 / 2.0,
+        surface.window().inner_size().height as f32 / 2.0
+    );
+}
+
+fn zoom_32(zoom_ref: &mut f32, scroll: f32)
+{
+    *zoom_ref *= if scroll < 0.0 { 1.0 / ZOOM_MULTIPLIER_32 } else { ZOOM_MULTIPLIER_32 };
 }

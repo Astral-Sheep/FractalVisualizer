@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use std::sync::Arc;
 use bytemuck::{ Pod, Zeroable };
 use vulkano::{
@@ -10,8 +8,7 @@ use vulkano::{
             viewport::{ Viewport, ViewportState },
             input_assembly::InputAssemblyState,
         },
-        layout::PipelineLayoutCreateInfo,
-        GraphicsPipeline, PipelineBindPoint, Pipeline, PipelineLayout,
+        GraphicsPipeline, PipelineBindPoint, Pipeline,
     },
     render_pass::{ RenderPass, Subpass, Framebuffer, FramebufferCreateInfo },
     buffer::{ CpuAccessibleBuffer, BufferUsage, TypedBufferAccess, BufferContents },
@@ -25,7 +22,8 @@ use vulkano::{
 };
 use winit::window::Window;
 use super::shader;
-use super::Vector2;
+use super::Vector2_32;
+use super::Vector2_64;
 
 pub fn create_render_pass(device: &Arc<Device>, swapchain: &Arc<Swapchain<Window>>) -> Arc<RenderPass>
 {
@@ -107,8 +105,8 @@ pub fn create_command_buffers(
     pipeline: &Arc<GraphicsPipeline>,
     framebuffers: &Vec<Arc<Framebuffer>>,
     vertex_buffer: &Arc<CpuAccessibleBuffer<[Vertex]>>,
-    image_center: Vector2,
-    image_offset: Vector2,
+    image_center: Vector2_32,
+    image_offset: Vector2_64,
     image_zoom: f32
 ) -> Vec<Arc<PrimaryAutoCommandBuffer>>
 {
@@ -117,7 +115,7 @@ pub fn create_command_buffers(
         layout.clone(),
         [
             create_descriptor_set(&device, 0, image_center),
-            create_descriptor_set(&device, 1, image_offset),
+            create_descriptor_set(&device, 1, EmulatedVector2_64::from_vector_64(image_offset)),
             create_descriptor_set(&device, 2, image_zoom)
         ]
     ).unwrap();
@@ -176,6 +174,13 @@ where T : BufferContents
     )
 }
 
+fn create_emulated_double(double: f64) -> EmulatedDouble
+{
+    let high: f32 = double as f32;
+    let low: f32 = (double - high as f64) as f32;
+    EmulatedDouble { high, low }
+}
+
 #[repr(C)]
 #[derive(Default, Copy, Clone, Zeroable, Pod)]
 pub struct Vertex
@@ -184,3 +189,30 @@ pub struct Vertex
 }
 
 vulkano::impl_vertex!(Vertex, position);
+
+#[repr(C)]
+#[derive(Default, Copy, Clone, Zeroable, Pod)]
+struct EmulatedDouble
+{
+    high: f32,
+    low: f32,
+}
+
+#[repr(C)]
+#[derive(Default, Copy, Clone, Zeroable, Pod)]
+struct EmulatedVector2_64
+{
+    x: EmulatedDouble,
+    y: EmulatedDouble,
+}
+
+impl EmulatedVector2_64
+{
+    fn from_vector_64(vector: Vector2_64) -> Self
+    {
+        EmulatedVector2_64 {
+            x: create_emulated_double(vector.x),
+            y: create_emulated_double(vector.y),
+        }
+    }
+}

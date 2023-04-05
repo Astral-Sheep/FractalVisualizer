@@ -43,7 +43,7 @@ pub fn select_physical_device
             PhysicalDeviceType::Cpu => 3,
             _ => 4,
         })
-        .expect("No device available.")
+        .expect("No physical device available.")
 }
 
 pub fn create_instance() -> Arc<Instance>

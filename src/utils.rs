@@ -6,21 +6,29 @@ use bytemuck::{ Pod, Zeroable };
 
 #[repr(C)]
 #[derive(Default, Debug, Copy, Clone, Zeroable, Pod)]
-pub struct Vector2
+pub struct Vector2_32
 {
     pub x: f32,
     pub y: f32,
 }
 
-impl Vector2
+#[repr(C)]
+#[derive(Default, Debug, Copy, Clone, Zeroable, Pod)]
+pub struct Vector2_64
 {
-    pub fn new(x: f32, y: f32) -> Vector2
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Vector2_32
+{
+    pub fn new(x: f32, y: f32) -> Self
     {
-        Vector2 { x, y }
+        Self { x, y }
     }
 }
 
-impl std::ops::Add for Vector2
+impl std::ops::Add for Vector2_32
 {
     type Output = Self;
 
@@ -30,17 +38,7 @@ impl std::ops::Add for Vector2
     }
 }
 
-impl std::ops::Sub for Vector2
-{
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output
-    {
-        Self { x: self.x - rhs.x, y: self.y - rhs.y }
-    }
-}
-
-impl std::ops::AddAssign for Vector2
+impl std::ops::AddAssign for Vector2_32
 {
     fn add_assign(&mut self, rhs: Self)
     {
@@ -49,11 +47,29 @@ impl std::ops::AddAssign for Vector2
     }
 }
 
-impl std::ops::SubAssign for Vector2
+impl Vector2_64
 {
-    fn sub_assign(&mut self, rhs: Self)
+    pub fn new(x: f64, y: f64) -> Self
     {
-        self.x -= rhs.x;
-        self.y -= rhs.y;
+        Self { x, y }
+    }
+}
+
+impl std::ops::Add for Vector2_64
+{
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output
+    {
+        Self { x: self.x + rhs.x, y: self.y + rhs.y }
+    }
+}
+
+impl std::ops::AddAssign for Vector2_64
+{
+    fn add_assign(&mut self, rhs: Self)
+    {
+        self.x += rhs.x;
+        self.y += rhs.y;
     }
 }
