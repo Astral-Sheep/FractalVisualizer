@@ -16,6 +16,11 @@ use utils::Vector2_32;
 use utils::Vector2_64;
 
 const ZOOM_MULTIPLIER_32: f32 = 1.25;
+const FRACTAL_SPEED: f32 = 0.005;
+const LEFT_KEY: u32 = 57419;
+const RIGHT_KEY: u32 = 57421;
+const UP_KEY: u32 = 57416;
+const DOWN_KEY: u32 = 57424;
 
 fn main()
 {
@@ -23,7 +28,7 @@ fn main()
 
     let event_loop = EventLoop::new();
     let surface = WindowBuilder::new()
-        .with_title("Fractals: Mandelbrot & Julia | Vulkano")
+        .with_title("Fractals: Julia | Vulkano")
         .build_vk_surface(&event_loop, instance.clone())
         .expect("Failed to create surface.");
 
@@ -46,6 +51,7 @@ fn main()
     let mut image_center = Vector2_32::new(0.0, 0.0);
     set_center(&mut image_center, &surface);
     let mut image_offset = Vector2_64::new(0.0, 0.0);
+    let mut fractal_coordinates = Vector2_32::new(0.0, 0.0);
 
     let pipeline = utils::rendering::create_pipeline(&device, &render_pass, &viewport);
     let mut command_buffers = utils::rendering::create_command_buffers(
@@ -56,7 +62,8 @@ fn main()
         &vertex_buffer,
         image_center,
         image_offset,
-        image_zoom
+        image_zoom,
+        fractal_coordinates
     );
 
     // Main Loop ----------------------------------------------------
@@ -82,6 +89,32 @@ fn main()
             ..
         } => {
             redraw = true;
+        }
+        Event::WindowEvent {
+            event: WindowEvent::KeyboardInput { input, .. },
+            ..
+        } => {
+            if input.state == ElementState::Pressed
+            {
+                match input.scancode
+                {
+                    UP_KEY => {
+                        fractal_coordinates.y += FRACTAL_SPEED;
+                    }
+                    LEFT_KEY => {
+                        fractal_coordinates.x -= FRACTAL_SPEED;
+                    }
+                    RIGHT_KEY => {
+                        fractal_coordinates.x += FRACTAL_SPEED;
+                    }
+                    DOWN_KEY => {
+                        fractal_coordinates.y -= FRACTAL_SPEED;
+                    }
+                    _ => ()
+                }
+
+                redraw = true;
+            }
         }
         Event::WindowEvent {
             event: WindowEvent::MouseWheel { delta, .. },
@@ -157,7 +190,8 @@ fn main()
                         &vertex_buffer,
                         image_center,
                         image_offset,
-                        image_zoom
+                        image_zoom,
+                        fractal_coordinates
                     );
                 }
             }

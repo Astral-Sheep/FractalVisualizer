@@ -10,6 +10,7 @@ layout(set=0, binding=1) uniform Offset
 	vec2 offset_y;
 };
 layout(set=0, binding=2) uniform Zoom { float zoom; };
+layout(set=0, binding=3) uniform Coordinates { vec2 coordinates; };
 layout(location=0) out vec4 f_color;
 
 //int mod(int value, int mod)
@@ -292,13 +293,8 @@ void main()
 		sub(sub(dgl_FragCoord.y, dcenter.y), doffset.y)
 	);
 
-	vec2f64 z = vec2f64(floatToDouble(0.0), floatToDouble(0.0));
-//	vec2f64 z = norm_coordinates;
-
-	vec2f64 c = vec2f64(
-		sub(mul(norm_coordinates.x, floatToDouble(2.0)), floatToDouble(1.0)),
-		sub(mul(norm_coordinates.y, floatToDouble(2.0)), floatToDouble(0.0))
-	);
+	vec2f64 z = norm_coordinates;
+	vec2f64 c = vec2f64(floatToDouble(coordinates.x), floatToDouble(coordinates.y));
 //	vec2f64 c = vec2f64(floatToDouble(-0.8), floatToDouble(0.156));
 
 	float i;

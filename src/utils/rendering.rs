@@ -107,7 +107,8 @@ pub fn create_command_buffers(
     vertex_buffer: &Arc<CpuAccessibleBuffer<[Vertex]>>,
     image_center: Vector2_32,
     image_offset: Vector2_64,
-    image_zoom: f32
+    image_zoom: f32,
+    fractal_coordinates: Vector2_32
 ) -> Vec<Arc<PrimaryAutoCommandBuffer>>
 {
     let layout = pipeline.layout().set_layouts().get(0).expect("Failed to get layout set.");
@@ -116,7 +117,8 @@ pub fn create_command_buffers(
         [
             create_descriptor_set(&device, 0, image_center),
             create_descriptor_set(&device, 1, EmulatedVector2_64::from_vector_64(image_offset)),
-            create_descriptor_set(&device, 2, image_zoom)
+            create_descriptor_set(&device, 2, image_zoom),
+            create_descriptor_set(&device, 3, fractal_coordinates)
         ]
     ).unwrap();
 
